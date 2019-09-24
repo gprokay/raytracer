@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netcoreapp3.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RayTracer.Lib\RayTracer.Lib.csproj" />
+    <ProjectReference Include="..\RayTracer.ThreeMFReader\RayTracer.ThreeMFReader.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="data\3dmodel.model.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="data\test.3mf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>
