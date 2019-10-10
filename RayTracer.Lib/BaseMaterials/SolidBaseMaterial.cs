@@ -16,5 +16,10 @@ namespace RayTracer.Lib
         {
             return Color;
         }
+
+        public Light AlterLight(Light light)
+        {
+            return new Light { Brightness = 0 };
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Drawing;
+﻿using System.Diagnostics;
+using System.Drawing;
 using System.Drawing.Imaging;
 
 namespace RayTracer.Lib

@@ -24,7 +24,7 @@ namespace RayTracer.Lib
 
                 var center = camera.planeCenter;
 
-                rayStartPoint = camera.FocalPoint;
+                rayStartPoint = camera.focalPoint;
 
                 topLeft = center - halfHorizintalLength * horizontalUnitVector - halfVerticalLenght * verticalUnitVector;
             }
@@ -43,8 +43,6 @@ namespace RayTracer.Lib
 
         private readonly Vector3 planeXVector;
         private readonly Vector3 planeYVector;
-
-        public Vector3 FocalPoint => focalPoint;
 
         public RectCamera(Vector3 o, Vector3 xVector, Vector3 yVector, float length)
         {
@@ -73,7 +71,7 @@ namespace RayTracer.Lib
 
             var center = planeCenter;
 
-            var rayStartPoint = FocalPoint;
+            var rayStartPoint = focalPoint;
 
             var topLeft = center - halfHorizintalLength * horizontalUnitVector - halfVerticalLenght * verticalUnitVector;
 

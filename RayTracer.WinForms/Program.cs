@@ -1,6 +1,4 @@
-﻿using RayTracer.ThreeMFReader;
-using System;
-using System.Linq;
+﻿using System;
 using System.Windows.Forms;
 
 namespace RayTracer.WinForms
@@ -11,11 +9,11 @@ namespace RayTracer.WinForms
         /// The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static void Main(string[] args)
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Application.Run(new RayTraceForm(args.Length > 0 && args[0].ToLowerInvariant() == "save"));
         }
     }
 }

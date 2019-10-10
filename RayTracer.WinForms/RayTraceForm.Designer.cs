@@ -1,6 +1,6 @@
 ﻿namespace RayTracer.WinForms
 {
-    partial class Form1
+    partial class RayTraceForm
     {
         /// <summary>
         /// Required designer variable.

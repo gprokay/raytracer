@@ -15,7 +15,7 @@ namespace RayTracer.Lib
 
         public Light AlterLight(Light light)
         {
-            return new Light { Brightness = 0 };
+            return solidMaterial.AlterLight(light);
         }
 
         public Color GetColor(TraceContext context)

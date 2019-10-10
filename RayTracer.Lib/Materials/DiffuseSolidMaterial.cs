@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
+﻿using System.Drawing;
 
 namespace RayTracer.Lib
 {
@@ -8,6 +6,7 @@ namespace RayTracer.Lib
     public class DiffuseSolidMaterial : IMaterial
     {
         private readonly SolidBaseMaterial baseMaterial;
+
         public ISurfaceShader SurfaceShader { get; }
 
         public DiffuseSolidMaterial(Color color)
@@ -23,18 +22,13 @@ namespace RayTracer.Lib
 
         public Light AlterLight(Light light)
         {
-            return new Light { Brightness = 0 };
+            return baseMaterial.AlterLight(light);
         }
 
         public virtual Color GetColor(TraceContext context)
         {
             var color = baseMaterial.GetColor(context.Ray, context.Intersection, context.TraceFunc, context.Depth);
             return color;
-        }
-
-        public Light AlterLight(Light light, Ray shadowRay)
-        {
-            throw new NotImplementedException();
         }
     }
 }

@@ -7,7 +7,5 @@ namespace RayTracer.Lib
         public Ray[] GetCameraRays(int pixelWidth, int pixelHeight);
 
         IRayFactory GetRayFactory(int pixelWidth, int pixelHeight);
-
-        Vector3 FocalPoint { get; }
     }
 }

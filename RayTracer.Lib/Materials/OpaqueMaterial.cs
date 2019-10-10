@@ -6,24 +6,22 @@ namespace RayTracer.Lib
     {
         private readonly OpaqueBaseMaterial opaqueObject;
         private readonly ReflectiveBaseMaterial reflectiveBaseMaterial;
-        private readonly float opacity;
         
         public ISurfaceShader SurfaceShader { get; } = new DiffuseShader();
 
         public OpaqueMaterial(float index, Color color, float opacity, bool reflects = false)
         {
             opaqueObject = new OpaqueBaseMaterial(index, color, opacity);
+
             if (reflects)
             {
                 reflectiveBaseMaterial = new ReflectiveBaseMaterial();
             }
-
-            this.opacity = opacity;
         }
 
         public Light AlterLight(Light light)
         {
-            return new Light { Brightness = light.Brightness * opacity };
+            return opaqueObject.AlterLight(light);
         }
 
         public Color GetColor(TraceContext context)

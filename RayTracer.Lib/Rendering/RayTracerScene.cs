@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
 using System.Threading;
@@ -57,8 +58,9 @@ namespace RayTracer.Lib
             var hitObject = (IRayTraceObject)null;
             var hitPoint = (Intersection)(default);
 
-            foreach (var obj in Objects)
+            for (var i = 0; i < Objects.Count; ++i)
             {
+                var obj = Objects[i];
                 if (!obj.TryGetIntersection(ray, out var intersection))
                 {
                     continue;
@@ -73,9 +75,11 @@ namespace RayTracer.Lib
 
             if (hitObject == null) return BackgroundColor;
 
-            LightRay lightRay = new LightRay { Light = new Light { Brightness = AmbientBrightness }, IsAmbient = true };
-            foreach (var lightSource in LightSources)
+            var light = new Light { Brightness = AmbientBrightness };
+
+            for (var i = 0; i < LightSources.Count; ++i)
             {
+                var lightSource = LightSources[i];
                 var shadowRay = lightSource.GetShadowRay(hitPoint.IntersectionPoint);
 
                 var currentLight = new Light { Brightness = lightSource.Brightness };
@@ -96,16 +100,14 @@ namespace RayTracer.Lib
                     currentLight.Brightness = shadedBrigthness;
                 }
 
-                if (currentLight.Brightness > lightRay.Light.Brightness && dotProduct > 0)
+                if (currentLight.Brightness > light.Brightness && dotProduct > 0)
                 {
-                    lightRay.Light = currentLight;
-                    lightRay.ShadowRay = shadowRay;
-                    lightRay.IsAmbient = false;
+                    light = currentLight;
                 }
             }
 
             var dp = Vector3.Dot(ray.Direction, hitPoint.NormalVector) * -1;
-            var isSurface = dp > 0;
+            var isSurface = dp >= 0;
 
             var color = hitObject.Material.GetColor(new TraceContext
             {
@@ -117,7 +119,7 @@ namespace RayTracer.Lib
             });
 
             return isSurface
-                ? hitObject.Material.SurfaceShader.Shade(color, Math.Max(lightRay.Light.Brightness, AmbientBrightness))
+                ? hitObject.Material.SurfaceShader.Shade(color, Math.Max(light.Brightness, AmbientBrightness))
                 : color;
         }
     }

@@ -1,8 +1,12 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="TestScene.cs~RF1064b107.TMP" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\RayTracer.Lib\RayTracer.Lib.csproj" />
@@ -11,6 +15,12 @@
 
   <ItemGroup>
     <None Update="data\3dmodel.model.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="data\icon.3mf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="data\sphere.3mf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="data\test.3mf">

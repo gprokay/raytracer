@@ -17,6 +17,11 @@ namespace RayTracer.Lib
             this.opacity = opacity;
         }
 
+        public Light AlterLight(Light light)
+        {
+            return new Light { Brightness = light.Brightness * opacity };
+        }
+
         public Color GetColor(Ray ray, Intersection intersection, Func<Ray, int, Color> traceFunc, int depth)
         {
             var cosi = Vector3.Dot(ray.Direction, intersection.NormalVector);

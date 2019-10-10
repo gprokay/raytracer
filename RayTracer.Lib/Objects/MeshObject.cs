@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 
@@ -6,11 +8,170 @@ namespace RayTracer.Lib
 {
     public class MeshObject : IRayTraceObject
     {
+        private class MeshBound
+        {
+            private static Vector3 XNormal = new Vector3(1, 0, 0);
+            private static Vector3 YNormal = new Vector3(0, 1, 0);
+            private static Vector3 ZNormal = new Vector3(0, 0, 1);
+
+            [DebuggerDisplay("C= {Center}")]
+            private class InnerBound
+            {
+                public int Xp;
+                public int Xn;
+                public int Yp;
+                public int Yn;
+                public int Zp;
+                public int Zn;
+                public int[] Triangles;
+                public Vector3 Center;
+
+                public bool IsIn(Vector3 v, List<Plane> xPlanes, List<Plane> yPlanes, List<Plane> zPlanes, float bias)
+                {
+                    return v.X >= xPlanes[Xn].D - bias && v.X <= xPlanes[Xp].D + bias
+                        && v.Y >= yPlanes[Yn].D - bias && v.Y <= yPlanes[Yp].D + bias
+                        && v.Z >= zPlanes[Zn].D - bias && v.Z <= zPlanes[Zp].D + bias;
+                }
+
+                public bool Intersects(Ray ray, List<Plane> xPlanes, List<Plane> yPlanes, List<Plane> zPlanes)
+                {
+                    var negXPlane = xPlanes[Xn];
+                    var posXPlane = xPlanes[Xp];
+                    var negYPlane = yPlanes[Yn];
+                    var posYPlane = yPlanes[Yp];
+                    var negZPlane = zPlanes[Zn];
+                    var posZPlane = zPlanes[Zp];
+
+                    var x1 = ray.TryIntersect(negXPlane, out var negXP) && negXP.Y >= negYPlane.D && negXP.Y <= posYPlane.D && negXP.Z >= negZPlane.D && negXP.Z <= posZPlane.D;
+                    var x2 = ray.TryIntersect(posXPlane, out var posXP) && posXP.Y >= negYPlane.D && posXP.Y <= posYPlane.D && posXP.Z >= negZPlane.D && posXP.Z <= posZPlane.D;
+                    var y1 = ray.TryIntersect(negYPlane, out var negYP) && negYP.X >= negXPlane.D && negYP.X <= posXPlane.D && negYP.Z >= negZPlane.D && negYP.Z <= posZPlane.D;
+                    var y2 = ray.TryIntersect(posYPlane, out var posYP) && posYP.X >= negXPlane.D && posYP.X <= posXPlane.D && posYP.Z >= negZPlane.D && posYP.Z <= posZPlane.D;
+                    var z1 = ray.TryIntersect(negZPlane, out var negZP) && negZP.Y >= negYPlane.D && negZP.Y <= posYPlane.D && negZP.X >= negXPlane.D && negZP.X <= posXPlane.D;
+                    var z2 = ray.TryIntersect(posZPlane, out var posZP) && posZP.Y >= negYPlane.D && posZP.Y <= posYPlane.D && posZP.X >= negXPlane.D && posZP.X <= posXPlane.D;
+
+                    return x1 || x2 || y1 || y2 || z1 || z2;
+                }
+            }
+
+            private List<Plane> XPlanes = new List<Plane>();
+            private List<Plane> YPlanes = new List<Plane>();
+            private List<Plane> ZPlanes = new List<Plane>();
+            private List<InnerBound> Bounds = new List<InnerBound>();
+            private readonly MeshObject obj;
+            private readonly float bias;
+
+            public MeshBound(MeshObject obj, int slices, float bias = 0.5f)
+            {
+                float minX = float.PositiveInfinity, minY = float.PositiveInfinity, minZ = float.PositiveInfinity,
+                    maxX = float.NegativeInfinity, maxY = float.NegativeInfinity, maxZ = float.NegativeInfinity;
+
+                for (int i = 0; i < obj.vectors.Length; ++i)
+                {
+                    var v = obj.vectors[i];
+                    if (v.X < minX) minX = v.X;
+                    if (v.Y < minY) minY = v.Y;
+                    if (v.Z < minZ) minZ = v.Z;
+                    if (v.X > maxX) maxX = v.X;
+                    if (v.Y > maxY) maxY = v.Y;
+                    if (v.Z > maxZ) maxZ = v.Z;
+                }
+
+
+                XPlanes.Add(new Plane(XNormal, minX));
+                XPlanes.Add(new Plane(XNormal, maxX));
+                YPlanes.Add(new Plane(YNormal, minY));
+                YPlanes.Add(new Plane(YNormal, maxY));
+                ZPlanes.Add(new Plane(ZNormal, minZ));
+                ZPlanes.Add(new Plane(ZNormal, maxZ));
+
+                var dX = MathF.Abs(minX - maxX) / slices;
+                var dY = MathF.Abs(minY - maxY) / slices;
+                var dZ = MathF.Abs(minZ - maxZ) / slices;
+
+                for (int i = 1; i < slices; ++i)
+                {
+                    XPlanes.Add(new Plane(XNormal, minX + i * dX));
+                    YPlanes.Add(new Plane(YNormal, minY + i * dY));
+                    ZPlanes.Add(new Plane(ZNormal, minZ + i * dZ));
+                }
+
+                XPlanes.Sort(PlaneComparison);
+                YPlanes.Sort(PlaneComparison);
+                ZPlanes.Sort(PlaneComparison);
+
+                for (int x = 0; x < slices; ++x)
+                {
+                    for (int y = 0; y < slices; ++y)
+                    {
+                        for (int z = 0; z < slices; ++z)
+                        {
+                            var bound = new InnerBound
+                            {
+                                Xn = x,
+                                Xp = x + 1,
+                                Yn = y,
+                                Yp = y + 1,
+                                Zn = z,
+                                Zp = z + 1,
+                                Center = new Vector3((XPlanes[x + 1].D + XPlanes[x].D) / 2, (YPlanes[y + 1].D + YPlanes[y].D) / 2, (ZPlanes[z + 1].D + ZPlanes[z].D) / 2)
+                            };
+                            var triangles = new List<int>(obj.triangles.Length);
+
+                            for (int i = 0; i < obj.triangles.Length; ++i)
+                            {
+                                var triangle = obj.triangles[i];
+                                var v1 = obj.vectors[triangle.V1];
+                                var v2 = obj.vectors[triangle.V2];
+                                var v3 = obj.vectors[triangle.V3];
+                                if (bound.IsIn(v1, XPlanes, YPlanes, ZPlanes, bias)
+                                    || bound.IsIn(v2, XPlanes, YPlanes, ZPlanes, bias)
+                                    || bound.IsIn(v3, XPlanes, YPlanes, ZPlanes, bias))
+                                {
+                                    triangles.Add(i);
+                                }
+                            }
+
+                            bound.Triangles = triangles.ToArray();
+                            Bounds.Add(bound);
+                        }
+                    }
+                }
+
+                this.obj = obj;
+                this.bias = bias;
+            }
+
+            public int[] GetBoundedTriangles(Ray ray)
+            {
+                var minD = float.PositiveInfinity;
+                var minBound = (InnerBound)null;
+
+                foreach (var bound in Bounds)
+                {
+                    if (bound.Intersects(ray, XPlanes, YPlanes, ZPlanes))
+                    {
+                        var d = (bound.Center - ray.StartPoint).Length();
+                        if (d < minD)
+                        {
+                            minD = d;
+                            minBound = bound;
+                        }
+                    }
+                }
+
+                return minBound?.Triangles;
+            }
+
+            private static int PlaneComparison(Plane a, Plane b) => (a.D - b.D) switch { var x when x < 0 => -1, var x when x > 0 => 1, _ => 0 };
+        }
+
         private readonly Vector3[] vectors;
         private (int V1, int V2, int V3)[] triangles;
+        private MeshBound bound;
 
         public IMaterial Material { get; }
 
+        public Vector3 Center { get; private set; } = new Vector3(0, 0, 0);
 
         public MeshObject(Vector3[] vectors, (int V1, int V2, int V3)[] triangles, IMaterial material)
         {
@@ -19,13 +180,20 @@ namespace RayTracer.Lib
             Material = material;
         }
 
-        public void ReorderTriangles(Vector3 point)
+        public void Bound(int slices = 1)
         {
-            triangles = triangles
-                .Select(t => new { D = (MathF.Abs((point - vectors[t.V1]).Length()) + MathF.Abs((point - vectors[t.V2]).Length()) + MathF.Abs((point - vectors[t.V3]).Length())) / 3, Triangle = t })
-                .OrderBy(t => t.D)
-                .Select(t => t.Triangle)
-                .ToArray();
+            bound = slices == 0 ? null : new MeshBound(this, slices, .5f);
+        }
+
+        public void Move(Vector3 moveVector)
+        {
+            Center += moveVector;
+
+            for (int i = 0; i < vectors.Length; ++i)
+            {
+                vectors[i] += moveVector;
+            }
+            bound = null;
         }
 
         public void Rotate(float x, float y, float z)
@@ -41,6 +209,7 @@ namespace RayTracer.Lib
                 vr = Vector3.Transform(vr, rotZ);
                 vectors[i] = vr;
             }
+            bound = null;
         }
 
         public static Vector3 RotateVector(Vector3 v, float x, float y, float z)
@@ -62,6 +231,7 @@ namespace RayTracer.Lib
                 vectors[i].Y = vectors[i].Y * y;
                 vectors[i].Z = vectors[i].Z * z;
             }
+            bound = null;
         }
 
         public void Normalize()
@@ -76,35 +246,50 @@ namespace RayTracer.Lib
                 vectors[i].Y = vectors[i].Y / maxY;
                 vectors[i].Z = vectors[i].Z / maxZ;
             }
+            bound = null;
         }
 
         public bool TryGetIntersection(Ray ray, out Intersection intersection)
         {
             intersection = default;
             intersection.Distance = float.PositiveInfinity;
-            var hasI = false;
-            foreach (var triangle in triangles)
+            var intersects = false;
+
+            var currentTriangles = triangles;
+            var boundedTriangles = (int[])null;
+
+            if (bound != null && (boundedTriangles = bound.GetBoundedTriangles(ray)) == null)
             {
+                return false;
+            }
+
+            if (boundedTriangles != null)
+            {
+                currentTriangles = boundedTriangles.Select(t => triangles[t]).ToArray();
+            }
+
+            for (var i = 0; i < currentTriangles.Length; ++i)
+            {
+                var triangle = currentTriangles[i];
                 var v1 = vectors[triangle.V1];
                 var v2 = vectors[triangle.V2];
                 var v3 = vectors[triangle.V3];
                 if (TryIntersect(ray, v1, v2, v3, out var v, out var u, out var t))
                 {
-                    hasI = true;
+                    intersects = true;
                     var n = Vector3.Normalize(Vector3.Cross(v2 - v1, v3 - v1));
-                    var d = Vector3.Dot((v1 - ray.StartPoint), n) / Vector3.Dot(n, ray.Direction);
+                    var d = Vector3.Dot(v1 - ray.StartPoint, n) / Vector3.Dot(n, ray.Direction);
                     if (d < intersection.Distance)
                     {
-                        hasI = true;
+                        intersects = true;
                         intersection.NormalVector = n;
                         intersection.Distance = d;
                         intersection.IntersectionPoint = d * ray.Direction + ray.StartPoint;
-                        //return intersection.Distance > 0.001f && (intersection.Distance < ray.Length - 0.001f || ray.Length == float.PositiveInfinity);
                     }
                 }
             }
 
-            return hasI && intersection.Distance > 0.001f && (intersection.Distance < ray.Length - 0.001f || ray.Length == float.PositiveInfinity);
+            return intersects && intersection.Distance > 0.001f && (intersection.Distance < ray.Length - 0.001f || ray.Length == float.PositiveInfinity);
         }
 
         private static bool TryIntersect(Ray ray, Vector3 v0, Vector3 v1, Vector3 v2, out float v, out float u, out float t)
@@ -116,7 +301,7 @@ namespace RayTracer.Lib
             var v0v2 = v2 - v0;
             var pvec = Vector3.Cross(ray.Direction, v0v2);
             var det = Vector3.Dot(v0v1, pvec);
-            if (MathF.Abs(det) < 0.001f) return false;
+            if (MathF.Abs(det) < 0) return false;
             var invDet = 1 / det;
             var tvec = ray.StartPoint - v0;
             u = Vector3.Dot(tvec, pvec) * invDet;

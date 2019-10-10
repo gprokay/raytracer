@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace RayTracer.Lib
+﻿namespace RayTracer.Lib
 {
     public interface IRayFactory
     {

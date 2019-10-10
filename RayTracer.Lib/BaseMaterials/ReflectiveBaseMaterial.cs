@@ -7,6 +7,11 @@ namespace RayTracer.Lib
 
     public class ReflectiveBaseMaterial : IBaseMaterial
     {
+        public Light AlterLight(Light light)
+        {
+            return light;
+        }
+
         public Color GetColor(Ray ray, Intersection intersection, Func<Ray, int, Color> traceFunc, int depth)
         {
             var reflectionVector = Vector3.Reflect(ray.Direction, intersection.NormalVector);
