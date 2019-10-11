@@ -35,7 +35,7 @@ namespace RayTracer.ThreeMFReader
                 var vectors = mesh.Descendants(ns.GetName("vertex")).ToList();
                 var triangles = mesh.Descendants(ns.GetName("triangle")).ToList();
                 var threeMfMesh = new ThreeMFMesh();
-                threeMfMesh.Vectors = vectors.Select(v =>
+                threeMfMesh.Vertices = vectors.Select(v =>
                 {
                     var x = float.Parse(v.Attribute("x").Value, ci);
                     var y = float.Parse(v.Attribute("y").Value, ci);
@@ -50,6 +50,16 @@ namespace RayTracer.ThreeMFReader
                     var v3 = int.Parse(t.Attribute("v3").Value, ci);
                     return new Triangle { Vector1 = v1, Vector2 = v2, Vector3 = v3 };
                 }).ToArray();
+
+                threeMfMesh.Normals = new Vector3[triangles.Count];
+
+                for (int i = 0; i < threeMfMesh.Triangles.Length; ++i)
+                {
+                    var v1 = threeMfMesh.Vertices[threeMfMesh.Triangles[i].Vector1];
+                    var v2 = threeMfMesh.Vertices[threeMfMesh.Triangles[i].Vector2];
+                    var v3 = threeMfMesh.Vertices[threeMfMesh.Triangles[i].Vector3];
+                    threeMfMesh.Normals[i] = Vector3.Normalize(Vector3.Cross(v2 - v1, v3 - v1));
+                }
 
                 yield return threeMfMesh;
             }

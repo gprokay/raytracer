@@ -65,9 +65,9 @@ namespace RayTracer.Lib
                 float minX = float.PositiveInfinity, minY = float.PositiveInfinity, minZ = float.PositiveInfinity,
                     maxX = float.NegativeInfinity, maxY = float.NegativeInfinity, maxZ = float.NegativeInfinity;
 
-                for (int i = 0; i < obj.vectors.Length; ++i)
+                for (int i = 0; i < obj.vertices.Length; ++i)
                 {
-                    var v = obj.vectors[i];
+                    var v = obj.vertices[i];
                     if (v.X < minX) minX = v.X;
                     if (v.Y < minY) minY = v.Y;
                     if (v.Z < minZ) minZ = v.Z;
@@ -120,9 +120,9 @@ namespace RayTracer.Lib
                             for (int i = 0; i < obj.triangles.Length; ++i)
                             {
                                 var triangle = obj.triangles[i];
-                                var v1 = obj.vectors[triangle.V1];
-                                var v2 = obj.vectors[triangle.V2];
-                                var v3 = obj.vectors[triangle.V3];
+                                var v1 = obj.vertices[triangle.V1];
+                                var v2 = obj.vertices[triangle.V2];
+                                var v3 = obj.vertices[triangle.V3];
                                 if (bound.IsIn(v1, XPlanes, YPlanes, ZPlanes, bias)
                                     || bound.IsIn(v2, XPlanes, YPlanes, ZPlanes, bias)
                                     || bound.IsIn(v3, XPlanes, YPlanes, ZPlanes, bias))
@@ -165,18 +165,20 @@ namespace RayTracer.Lib
             private static int PlaneComparison(Plane a, Plane b) => (a.D - b.D) switch { var x when x < 0 => -1, var x when x > 0 => 1, _ => 0 };
         }
 
-        private readonly Vector3[] vectors;
+        private readonly Vector3[] vertices;
         private (int V1, int V2, int V3)[] triangles;
+        private Vector3[] normals;
         private MeshBound bound;
 
         public IMaterial Material { get; }
 
         public Vector3 Center { get; private set; } = new Vector3(0, 0, 0);
 
-        public MeshObject(Vector3[] vectors, (int V1, int V2, int V3)[] triangles, IMaterial material)
+        public MeshObject(Vector3[] vertices, (int V1, int V2, int V3)[] triangles, Vector3[] normals, IMaterial material)
         {
-            this.vectors = vectors;
+            this.vertices = vertices;
             this.triangles = triangles;
+            this.normals = normals;
             Material = material;
         }
 
@@ -189,9 +191,9 @@ namespace RayTracer.Lib
         {
             Center += moveVector;
 
-            for (int i = 0; i < vectors.Length; ++i)
+            for (int i = 0; i < vertices.Length; ++i)
             {
-                vectors[i] += moveVector;
+                vertices[i] += moveVector;
             }
             bound = null;
         }
@@ -202,13 +204,20 @@ namespace RayTracer.Lib
             var rotY = Matrix4x4.CreateRotationY(y);
             var rotZ = Matrix4x4.CreateRotationZ(z);
 
-            for (int i = 0; i < vectors.Length; ++i)
+            for (int i = 0; i < vertices.Length; ++i)
             {
-                var vr = Vector3.Transform(vectors[i], rotX);
-                vr = Vector3.Transform(vr, rotY);
-                vr = Vector3.Transform(vr, rotZ);
-                vectors[i] = vr;
+                vertices[i] = Vector3.Transform(vertices[i], rotX);
+                vertices[i] = Vector3.Transform(vertices[i], rotY);
+                vertices[i] = Vector3.Transform(vertices[i], rotZ);
             }
+
+            for (int i = 0; i < normals.Length; ++i)
+            {
+                normals[i] = Vector3.Transform(normals[i], rotX);
+                normals[i] = Vector3.Transform(normals[i], rotY);
+                normals[i] = Vector3.Transform(normals[i], rotZ);
+            }
+
             bound = null;
         }
 
@@ -225,26 +234,26 @@ namespace RayTracer.Lib
 
         public void Scale(float x, float y, float z)
         {
-            for (int i = 0; i < vectors.Length; ++i)
+            for (int i = 0; i < vertices.Length; ++i)
             {
-                vectors[i].X = vectors[i].X * x;
-                vectors[i].Y = vectors[i].Y * y;
-                vectors[i].Z = vectors[i].Z * z;
+                vertices[i].X = vertices[i].X * x;
+                vertices[i].Y = vertices[i].Y * y;
+                vertices[i].Z = vertices[i].Z * z;
             }
             bound = null;
         }
 
         public void Normalize()
         {
-            var maxX = vectors.Select(v => v.X).Max();
-            var maxY = vectors.Select(v => v.Y).Max();
-            var maxZ = vectors.Select(v => v.Z).Max();
+            var maxX = vertices.Select(v => v.X).Max();
+            var maxY = vertices.Select(v => v.Y).Max();
+            var maxZ = vertices.Select(v => v.Z).Max();
 
-            for (int i = 0; i < vectors.Length; ++i)
+            for (int i = 0; i < vertices.Length; ++i)
             {
-                vectors[i].X = vectors[i].X / maxX;
-                vectors[i].Y = vectors[i].Y / maxY;
-                vectors[i].Z = vectors[i].Z / maxZ;
+                vertices[i].X = vertices[i].X / maxX;
+                vertices[i].Y = vertices[i].Y / maxY;
+                vertices[i].Z = vertices[i].Z / maxZ;
             }
             bound = null;
         }
@@ -255,7 +264,7 @@ namespace RayTracer.Lib
             intersection.Distance = float.PositiveInfinity;
             var intersects = false;
 
-            var currentTriangles = triangles;
+            var currentTriangles = Enumerable.Range(0, triangles.Length).ToArray();
             var boundedTriangles = (int[])null;
 
             if (bound != null && (boundedTriangles = bound.GetBoundedTriangles(ray)) == null)
@@ -265,19 +274,21 @@ namespace RayTracer.Lib
 
             if (boundedTriangles != null)
             {
-                currentTriangles = boundedTriangles.Select(t => triangles[t]).ToArray();
+                currentTriangles = boundedTriangles;
             }
 
             for (var i = 0; i < currentTriangles.Length; ++i)
             {
-                var triangle = currentTriangles[i];
-                var v1 = vectors[triangle.V1];
-                var v2 = vectors[triangle.V2];
-                var v3 = vectors[triangle.V3];
+                var triangleIndex = currentTriangles[i];
+                var triangle = triangles[triangleIndex];
+                var v1 = vertices[triangle.V1];
+                var v2 = vertices[triangle.V2];
+                var v3 = vertices[triangle.V3];
+                var n = normals[triangleIndex];
+
                 if (TryIntersect(ray, v1, v2, v3, out var v, out var u, out var t))
                 {
                     intersects = true;
-                    var n = Vector3.Normalize(Vector3.Cross(v2 - v1, v3 - v1));
                     var d = Vector3.Dot(v1 - ray.StartPoint, n) / Vector3.Dot(n, ray.Direction);
                     if (d < intersection.Distance)
                     {

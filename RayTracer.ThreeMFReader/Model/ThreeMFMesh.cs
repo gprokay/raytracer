@@ -11,8 +11,10 @@ namespace RayTracer.ThreeMFReader
 
     public class ThreeMFMesh
     {
-        public Vector3[] Vectors { get; set; }
+        public Vector3[] Vertices { get; set; }
 
         public Triangle[] Triangles { get; set; }
+
+        public Vector3[] Normals { get; set; }
     }
 }

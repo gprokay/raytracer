@@ -1,11 +1,11 @@
 ﻿using RayTracer.Lib;
 using RayTracer.Test;
 using System;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace RayTracer.WinForms
@@ -24,6 +24,11 @@ namespace RayTracer.WinForms
 
         private int width;
         private int height;
+        private BitmapWriter bitmapWriter;
+        private FromAccessDelegate refresh;
+        private FromAccessDelegate close;
+        private string dirName;
+        private string dir;
 
         public RayTraceForm(bool saveFiles)
         {
@@ -48,36 +53,38 @@ namespace RayTracer.WinForms
 
             Controls.Add(pictureBox);
 
+            dir = Directory.GetCurrentDirectory();
+            var startTime = DateTime.Now;
+
+            refresh = new FromAccessDelegate(Refresh);
+            close = new FromAccessDelegate(Close);
+            dirName = Path.Combine(dir, startTime.ToString("O").Replace(':', '-'));
+
+            bitmapWriter = new BitmapWriter();
+
+            if (saveFiles)
+                Directory.CreateDirectory(dirName);
+
             Activated += RayTraceForm_Activated;
             FormClosing += RayTraceForm_FormClosing;
         }
 
         private void RayTraceForm_Activated(object sender, EventArgs e)
         {
-            var thread = new Thread(() =>
+            Task.Factory.StartNew(() =>
             {
                 var colors = new Color[width * height];
-
-                var bitmapWriter = new BitmapWriter();
-                var dir = Directory.GetCurrentDirectory();
-                var startTime = DateTime.Now;
-                var refresh = new FromAccessDelegate(Refresh);
-                var close = new FromAccessDelegate(Close);
-                var dirName = Path.Combine(dir, startTime.ToString("O").Replace(':', '-'));
-                if (saveFiles) 
-                    Directory.CreateDirectory(dirName);
-
                 var frameIndex = 0;
                 var token = cancellationTokenSource.Token;
                 while (WindowState != FormWindowState.Minimized && ActiveForm == this && !token.IsCancellationRequested)
                 {
                     Thread.Sleep(1);
 
-                    var otherBitmap = (currentBitmap + 1) % 2;
-                    currentBitmap = otherBitmap;
+                    currentBitmap = (currentBitmap + 1) % 2;
                     TestScene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
 
-                    if (token.IsCancellationRequested) break;
+                    if (token.IsCancellationRequested) 
+                        break;
 
                     bitmapWriter.WriteToBitmap(bitmaps[currentBitmap], colors, width, height);
                     pictureBox.Image = bitmaps[currentBitmap];
@@ -85,7 +92,8 @@ namespace RayTracer.WinForms
                     if (saveFiles) 
                         bitmaps[currentBitmap].Save(Path.Combine(dirName, $"{frameIndex++:0000}.jpg"), ImageFormat.Jpeg);
 
-                    if (token.IsCancellationRequested) break;
+                    if (token.IsCancellationRequested) 
+                        break;
 
                     Invoke(refresh);
                     TestScene.Sphere.Move(-1 * TestScene.SphereCenter);
@@ -98,8 +106,6 @@ namespace RayTracer.WinForms
                 if (token.IsCancellationRequested) 
                     Invoke(close);
             });
-
-            thread.Start();
         }
 
         private void RayTraceForm_FormClosing(object sender, FormClosingEventArgs e)

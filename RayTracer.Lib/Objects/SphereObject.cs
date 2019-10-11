@@ -48,7 +48,7 @@ namespace RayTracer.Lib
             var d1Good = d1 > 0.001f && (d1 < ray.Length - 0.001f || ray.Length == float.PositiveInfinity);
             var d2Good = d2 > 0.001f && (d2 < ray.Length - 0.001f || ray.Length == float.PositiveInfinity);
 
-            if(d1Good && d2Good)
+            if (d1Good && d2Good)
             {
                 if (d1 < d2)
                 {
@@ -71,10 +71,8 @@ namespace RayTracer.Lib
                 intersection = new Intersection(p2, n2, d2);
                 return true;
             }
-            else
-            {
-                return false;
-            }
+
+            return false;
         }
     }
 }
