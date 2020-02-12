@@ -8,6 +8,7 @@ namespace GfxRenderer.Bench
     [MemoryDiagnoser]
     public class RaytracerBench
     {
+        private RayTracerTestScene scene = new RayTracerTestScene();
 
         //[Params(100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000)]
         //[Params(100, 200, 500, 1000, 2000, 5000)]
@@ -28,7 +29,7 @@ namespace GfxRenderer.Bench
         [Benchmark]
         public void Test()
         {
-            RayTracerTestScene.ReplaceMesh(Slice);
+            scene.ReplaceMesh(Slice);
             Run(false);
         }
 
@@ -38,7 +39,7 @@ namespace GfxRenderer.Bench
             var height = (int)(width * (9f / 16f));
             var colors = new int[width * height];
             //TestScene.Sphere.Mesh.CalculateBounds(Slice);
-            RayTracerTestScene.RenderScene(colors, width, height, parallel);
+            scene.RenderScene(colors, width, height, parallel);
         }
     }
 

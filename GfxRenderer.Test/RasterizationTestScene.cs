@@ -12,15 +12,15 @@ namespace GfxRenderer.Test
 {
     public class RasterizationTestScene
     {
-        public static MeshObject Sphere { get; private set; }
-        public static ICamera Camera { get; private set; }
-        public static RasterizationScene Scene { get; private set; }
-        public static ILightSource LightSource { get; set; }
-        public static MeshObject Cube { get; private set; }
-        public static Vector3 SphereCenter { get; set; }
-        private static ZBufferItem[] ZBuffer { get; set; }
+        public MeshObject Sphere { get; private set; }
+        public ICamera Camera { get; private set; }
+        public RasterizationScene Scene { get; private set; }
+        public ILightSource LightSource { get; set; }
+        public MeshObject Cube { get; private set; }
+        public Vector3 SphereCenter { get; set; }
+        private ZBufferItem[] ZBuffer { get; set; }
 
-        static RasterizationTestScene()
+        public RasterizationTestScene(int meshcomplexity = 6)
         {
             var meshes = ThreeMFLoader.LoadFromFile(@".\data\test.3mf").ToList();
             var mesh = meshes[0];
@@ -28,7 +28,7 @@ namespace GfxRenderer.Test
             Cube.Mesh.Normalize();
             Cube.Mesh.Rotate(MathF.PI / 4, MathF.PI / 4, 0);
 
-            var sphereMesh = ProceduralSphere.GetSphereMesh(1f, 6);
+            var sphereMesh = ProceduralSphere.GetSphereMesh(1f, meshcomplexity);
             SphereCenter = new Vector3(0, 0, 3.5f);
             Sphere = new MeshObject(sphereMesh, new OpaqueMaterial(1.2f, Color.Yellow, .8f, true));
             Sphere.Mesh.Move(SphereCenter);
@@ -43,7 +43,7 @@ namespace GfxRenderer.Test
             Scene.Objects.Add(Sphere);
         }
 
-        public static void ReplaceMesh(int factor = 6)
+        public void ReplaceMesh(int factor = 6)
         {
             var sphereMesh = ProceduralSphere.GetSphereMesh(1f, 6);
             SphereCenter = new Vector3(0, 0, 3.5f);
@@ -52,7 +52,7 @@ namespace GfxRenderer.Test
             Scene.Objects[1] = Sphere;
         }
 
-        public static void RenderScene(int[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null)
+        public string RenderScene(int[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null)
         {
             if (ZBuffer == null)
             {
@@ -63,7 +63,10 @@ namespace GfxRenderer.Test
             watch.Stop();
             var tCount = Sphere.Mesh.Triangles.Length + Cube.Mesh.Triangles.Length;
             var t = (int)(tCount / (float)watch.ElapsedMilliseconds);
-            Debug.WriteLine("Rendered in " + watch.ElapsedMilliseconds + " ms Polycount: " + tCount + "; Speed: " + t + " t/ms");
+            var fps = 1000 / watch.ElapsedMilliseconds;
+            var debug = "Rendered in " + watch.ElapsedMilliseconds + " ms Polycount: " + tCount + "; Speed: " + t + " t/ms; FPS: " + fps;
+            Debug.WriteLine(debug);
+            return debug;
         }
     }
 }

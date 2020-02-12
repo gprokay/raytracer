@@ -12,15 +12,15 @@ namespace GfxRenderer.Test
 {
     public class RayTracerTestScene
     {
-        public static MeshObject Sphere { get; private set; }
-        public static ICamera Camera { get; private set; }
-        public static Lib.RayTracerScene Scene { get; private set; }
-        public static SphericalLightSource LightSource { get; set; }
-        public static MeshObject Cube { get; private set; }
-        public static Vector3 SphereCenter { get; set; }
-        private static ZBufferItem[] ZBuffer { get; set; }
+        public MeshObject Sphere { get; private set; }
+        public ICamera Camera { get; private set; }
+        public RayTracerScene Scene { get; private set; }
+        public SphericalLightSource LightSource { get; set; }
+        public MeshObject Cube { get; private set; }
+        public Vector3 SphereCenter { get; set; }
+        private ZBufferItem[] ZBuffer { get; set; }
 
-        static RayTracerTestScene()
+        public RayTracerTestScene()
         {
             var meshes = ThreeMFLoader.LoadFromFile(@".\data\test.3mf").ToList();
             var mesh = meshes[0];
@@ -43,7 +43,7 @@ namespace GfxRenderer.Test
             Scene.Objects.Add(Sphere);
         }
 
-        public static void ReplaceMesh(int factor = 6)
+        public void ReplaceMesh(int factor = 6)
         {
             var sphereMesh = ProceduralSphere.GetSphereMesh(1f, 6);
             SphereCenter = new Vector3(0, 0, 3.5f);
@@ -52,7 +52,7 @@ namespace GfxRenderer.Test
             Scene.Objects[1] = Sphere;
         }
 
-        public static void RenderScene(int[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null)
+        public void RenderScene(int[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null)
         {
             if (ZBuffer == null)
             {

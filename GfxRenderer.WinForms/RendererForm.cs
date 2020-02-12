@@ -14,6 +14,8 @@ namespace GfxRenderer.WinForms
     {
         private delegate void FromAccessDelegate();
 
+        private RasterizationTestScene scene = new RasterizationTestScene(6);
+
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly bool saveFiles;
 
@@ -39,7 +41,7 @@ namespace GfxRenderer.WinForms
             InitializeComponent();
             RenderFormIcon();
 
-            width = 500;
+            width = 1600;
             height = (int)(width * (9f / 16f));
             Text = "Renderer";
             Width = width + 30;
@@ -96,13 +98,18 @@ namespace GfxRenderer.WinForms
                     Thread.Sleep(1);
 
                     currentBitmap = (currentBitmap + 1) % 2;
-                    RasterizationTestScene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
+                    var msg = scene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
 
                     if (token.IsCancellationRequested)
                         break;
 
                     bitmaps[currentBitmap].SetPixels(colors);
                     pictureBox.Image = bitmaps[currentBitmap].Bitmap;
+                    
+                    using(var gfx = Graphics.FromImage(bitmaps[currentBitmap].Bitmap))
+                    {
+                        gfx.DrawString(msg, Font, Brushes.Black, 0, 0);
+                    }
 
                     if (saveFiles)
                         bitmaps[currentBitmap].Bitmap.Save(Path.Combine(dirName, $"{frameIndex++:0000}.jpg"), ImageFormat.Jpeg);
@@ -111,11 +118,10 @@ namespace GfxRenderer.WinForms
                         break;
 
                     Invoke(refresh);
-                    RasterizationTestScene.Sphere.Mesh.Move(-1 * RasterizationTestScene.SphereCenter);
-                    RasterizationTestScene.SphereCenter = MeshObject.RotateVector(RasterizationTestScene.SphereCenter, 0, -1 * MathF.PI / 32, 0);
-                    RasterizationTestScene.Sphere.Mesh.Move(RasterizationTestScene.SphereCenter);
-                    //TestScene.Sphere.Mesh.CalculateBounds(2, 0);
-                    RasterizationTestScene.Cube.Mesh.Rotate(-1 * MathF.PI / 128, -1 * MathF.PI / 128, 0);
+                    scene.Sphere.Mesh.Move(-1 * scene.SphereCenter);
+                    scene.SphereCenter = MeshObject.RotateVector(scene.SphereCenter, 0, -1 * MathF.PI / 32, 0);
+                    scene.Sphere.Mesh.Move(scene.SphereCenter);
+                    scene.Cube.Mesh.Rotate(-1 * MathF.PI / 128, -1 * MathF.PI / 128, 0);
                 }
 
                 Interlocked.Decrement(ref threadCount);
