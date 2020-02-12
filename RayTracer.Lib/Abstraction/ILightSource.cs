@@ -10,7 +10,5 @@ namespace RayTracer.Lib
         float Brightness { get; }
 
         Ray GetShadowRay(Vector3 targetPoint);
-
-        ILightSource AlterBrightness(float brightness);
     }
 }

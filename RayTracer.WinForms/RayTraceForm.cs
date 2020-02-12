@@ -19,7 +19,7 @@ namespace RayTracer.WinForms
 
         private PictureBox pictureBox;
 
-        private Bitmap[] bitmaps = new Bitmap[2];
+        private DirectBitmap[] bitmaps = new DirectBitmap[2];
         private int currentBitmap = 0;
 
         private int width;
@@ -30,20 +30,23 @@ namespace RayTracer.WinForms
         private string dirName;
         private string dir;
 
+        private int threadCount = 0;
+        private Task task;
+
         public RayTraceForm(bool saveFiles)
         {
             this.saveFiles = saveFiles;
             InitializeComponent();
             RenderFormIcon();
 
-            width = 400;
+            width = 500;
             height = (int)(width * (9f / 16f));
             Text = "RayTracer";
             Width = width + 30;
             Height = height + 50;
 
-            bitmaps[0] = new Bitmap(width, height);
-            bitmaps[1] = new Bitmap(width, height);
+            bitmaps[0] = new DirectBitmap(width, height);
+            bitmaps[1] = new DirectBitmap(width, height);
 
             pictureBox = new PictureBox();
             pictureBox.BackColor = Color.Black;
@@ -69,11 +72,23 @@ namespace RayTracer.WinForms
             FormClosing += RayTraceForm_FormClosing;
         }
 
-        private void RayTraceForm_Activated(object sender, EventArgs e)
+        private async void RayTraceForm_Activated(object sender, EventArgs e)
         {
-            Task.Factory.StartNew(() =>
+            var runningTask = task;
+            if (runningTask != null)
             {
-                var colors = new Color[width * height];
+                await runningTask;
+            }
+
+            Interlocked.Increment(ref threadCount);
+            if (threadCount > 1)
+            {
+                throw new InvalidOperationException();
+            }
+
+            task = Task.Factory.StartNew(() =>
+            {
+                var colors = new int[width * height];
                 var frameIndex = 0;
                 var token = cancellationTokenSource.Token;
                 while (WindowState != FormWindowState.Minimized && ActiveForm == this && !token.IsCancellationRequested)
@@ -81,31 +96,36 @@ namespace RayTracer.WinForms
                     Thread.Sleep(1);
 
                     currentBitmap = (currentBitmap + 1) % 2;
-                    TestScene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
+                    RasterizationTestScene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
 
-                    if (token.IsCancellationRequested) 
+                    if (token.IsCancellationRequested)
                         break;
 
-                    bitmapWriter.WriteToBitmap(bitmaps[currentBitmap], colors, width, height);
-                    pictureBox.Image = bitmaps[currentBitmap];
+                    bitmaps[currentBitmap].SetPixels(colors);
+                    pictureBox.Image = bitmaps[currentBitmap].Bitmap;
 
-                    if (saveFiles) 
-                        bitmaps[currentBitmap].Save(Path.Combine(dirName, $"{frameIndex++:0000}.jpg"), ImageFormat.Jpeg);
+                    if (saveFiles)
+                        bitmaps[currentBitmap].Bitmap.Save(Path.Combine(dirName, $"{frameIndex++:0000}.jpg"), ImageFormat.Jpeg);
 
-                    if (token.IsCancellationRequested) 
+                    if (token.IsCancellationRequested)
                         break;
 
                     Invoke(refresh);
-                    TestScene.Sphere.Move(-1 * TestScene.SphereCenter);
-                    TestScene.SphereCenter = MeshObject.RotateVector(TestScene.SphereCenter, 0, -1 * MathF.PI / 32, 0);
-                    TestScene.Sphere.Move(TestScene.SphereCenter);
-                    TestScene.Sphere.Bound(4);
-                    TestScene.MeshObj.Rotate(-1 * MathF.PI / 128, -1 * MathF.PI / 128, 0);
+                    RasterizationTestScene.Sphere.Mesh.Move(-1 * RasterizationTestScene.SphereCenter);
+                    RasterizationTestScene.SphereCenter = MeshObject.RotateVector(RasterizationTestScene.SphereCenter, 0, -1 * MathF.PI / 32, 0);
+                    RasterizationTestScene.Sphere.Mesh.Move(RasterizationTestScene.SphereCenter);
+                    //TestScene.Sphere.Mesh.CalculateBounds(2, 0);
+                    RasterizationTestScene.Cube.Mesh.Rotate(-1 * MathF.PI / 128, -1 * MathF.PI / 128, 0);
                 }
 
-                if (token.IsCancellationRequested) 
+                Interlocked.Decrement(ref threadCount);
+
+                if (token.IsCancellationRequested)
                     Invoke(close);
             });
+
+            await task;
+            task = null;
         }
 
         private void RayTraceForm_FormClosing(object sender, FormClosingEventArgs e)

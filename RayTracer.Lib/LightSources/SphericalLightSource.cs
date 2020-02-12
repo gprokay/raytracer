@@ -18,10 +18,5 @@ namespace RayTracer.Lib
         {
             return new Ray(Center, targetPoint - Center, (targetPoint - Center).Length());
         }
-
-        public ILightSource AlterBrightness(float brightness)
-        {
-            return new SphericalLightSource(Center, brightness);
-        }
     }
 }

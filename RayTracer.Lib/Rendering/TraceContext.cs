@@ -15,5 +15,4 @@ namespace RayTracer.Lib
 
         public int Depth { get; set; }
     }
-
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
 using System.Threading;
@@ -21,7 +20,7 @@ namespace RayTracer.Lib
             AmbientBrightness = ambientBrightness;
         }
 
-        public void Render(ICamera camera, Color[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null)
+        public void Render(ICamera camera, int[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null)
         {
             var rayFactory = camera.GetRayFactory(width, height);
             if (parallel)
@@ -33,7 +32,7 @@ namespace RayTracer.Lib
                         if (cancellationToken.HasValue && cancellationToken.Value.IsCancellationRequested) return;
                         var index = y * width + x;
                         var ray = rayFactory.GetCameraRay(x, y);
-                        colors[index] = Trace(ray, 0);
+                        colors[index] = Trace(ray, 0).ToArgb();
                     }
                 });
             }
@@ -46,7 +45,7 @@ namespace RayTracer.Lib
                         if (cancellationToken.HasValue && cancellationToken.Value.IsCancellationRequested) return;
                         var index = y * width + x;
                         var ray = rayFactory.GetCameraRay(x, y);
-                        colors[index] = Trace(ray, 0);
+                        colors[index] = Trace(ray, 0).ToArgb();
                     }
                 }
             }
@@ -106,17 +105,17 @@ namespace RayTracer.Lib
                 }
             }
 
-            var dp = Vector3.Dot(ray.Direction, hitPoint.NormalVector) * -1;
-            var isSurface = dp >= 0;
-
-            var color = hitObject.Material.GetColor(new TraceContext
+            var isSurface = ray.IsSurfaceHit(hitPoint.NormalVector);
+            var ctx = new TraceContext
             {
                 Ray = ray,
                 Intersection = hitPoint,
                 IsSurface = isSurface,
                 TraceFunc = Trace,
                 Depth = depth
-            });
+            };
+
+            var color = hitObject.Material.GetColor(ctx);
 
             return isSurface
                 ? hitObject.Material.SurfaceShader.Shade(color, Math.Max(light.Brightness, AmbientBrightness))

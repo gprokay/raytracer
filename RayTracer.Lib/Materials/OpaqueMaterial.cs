@@ -7,10 +7,13 @@ namespace RayTracer.Lib
         private readonly OpaqueBaseMaterial opaqueObject;
         private readonly ReflectiveBaseMaterial reflectiveBaseMaterial;
         
+        public Color Color { get; private set; }
+
         public ISurfaceShader SurfaceShader { get; } = new DiffuseShader();
 
         public OpaqueMaterial(float index, Color color, float opacity, bool reflects = false)
         {
+            Color = color;
             opaqueObject = new OpaqueBaseMaterial(index, color, opacity);
 
             if (reflects)

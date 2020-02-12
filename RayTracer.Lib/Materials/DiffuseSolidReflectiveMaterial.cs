@@ -7,9 +7,11 @@ namespace RayTracer.Lib
         private readonly ReflectiveBaseMaterial reflectiveMaterial = new ReflectiveBaseMaterial();
         private readonly SolidBaseMaterial solidMaterial;
         public ISurfaceShader SurfaceShader { get; } = new DiffuseShader();
+        public Color Color { get; private set; }
 
         public DiffuseSolidReflectiveMaterial(Color color)
         {
+            Color = color;
             solidMaterial = new SolidBaseMaterial(color);
         }
 

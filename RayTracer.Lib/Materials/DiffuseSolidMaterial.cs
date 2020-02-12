@@ -8,16 +8,13 @@ namespace RayTracer.Lib
         private readonly SolidBaseMaterial baseMaterial;
 
         public ISurfaceShader SurfaceShader { get; }
+        public Color Color { get; }
 
         public DiffuseSolidMaterial(Color color)
         {
+            Color = color;
             baseMaterial = new SolidBaseMaterial(color);
             SurfaceShader = new DiffuseShader();
-        }
-
-        public ILightSource AlterLight(ILightSource lightSource)
-        {
-            return lightSource.AlterBrightness(0);
         }
 
         public Light AlterLight(Light light)

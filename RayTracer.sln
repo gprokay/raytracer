@@ -11,7 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RayTracer.Bench", "RayTrace
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RayTracer.Test", "RayTracer.Test\RayTracer.Test.csproj", "{61BDF22C-D75A-476D-9C63-4AC56892A9A6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RayTracer.ThreeMFReader", "RayTracer.ThreeMFReader\RayTracer.ThreeMFReader.csproj", "{952DBF09-F5D8-4700-B71C-957CE445ECAA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RayTracer.ThreeMFReader", "RayTracer.ThreeMFReader\RayTracer.ThreeMFReader.csproj", "{952DBF09-F5D8-4700-B71C-957CE445ECAA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
