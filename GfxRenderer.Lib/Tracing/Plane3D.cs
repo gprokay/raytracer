@@ -4,14 +4,14 @@ namespace GfxRenderer.Lib
 {
     // (p-p0) . n = 0
 
-    public class Rectangle3D
+    public class Plane3D
     {
         private readonly Vector3 normal;
         private readonly Vector3 origin;
         private readonly Vector3 vx;
         private readonly Vector3 vy;
 
-        public Rectangle3D(Vector3 origin, Vector3 vx, Vector3 vy)
+        public Plane3D(Vector3 origin, Vector3 vx, Vector3 vy)
         {
             normal = Vector3.Normalize(Vector3.Cross(vx, vy));
             this.origin = origin;

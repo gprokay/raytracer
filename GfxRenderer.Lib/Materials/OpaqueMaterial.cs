@@ -6,17 +6,19 @@ namespace GfxRenderer.Lib
     {
         private readonly OpaqueBaseMaterial opaqueObject;
         private readonly ReflectiveBaseMaterial reflectiveBaseMaterial;
-        
+        private readonly float? reflectivity;
+
         public Color Color { get; private set; }
 
         public ISurfaceShader SurfaceShader { get; } = new DiffuseShader();
 
-        public OpaqueMaterial(float index, Color color, float opacity, bool reflects = false)
+        public OpaqueMaterial(float index, Color color, float opacity, float? reflectivity = null)
         {
             Color = color;
+            this.reflectivity = reflectivity;
             opaqueObject = new OpaqueBaseMaterial(index, color, opacity);
 
-            if (reflects)
+            if (reflectivity.HasValue)
             {
                 reflectiveBaseMaterial = new ReflectiveBaseMaterial();
             }
@@ -34,7 +36,7 @@ namespace GfxRenderer.Lib
             if (reflectiveBaseMaterial != null && context.IsSurface)
             {
                 var reflectColor = reflectiveBaseMaterial.GetColor(context.Ray, context.Intersection, context.TraceFunc, context.Depth);
-                color = color.Mix(reflectColor, .5f);
+                color = color.Mix(reflectColor, reflectivity.Value);
             }
 
             return color;

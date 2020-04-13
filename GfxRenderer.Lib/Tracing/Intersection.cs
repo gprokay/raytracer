@@ -8,9 +8,7 @@ namespace GfxRenderer.Lib
     public struct Intersection
     {
         public Vector3 IntersectionPoint;
-
         public Vector3 NormalVector;
-
         public float Distance;
 
         public Intersection(Vector3 intersectionPoint, Vector3 normalVector, float distance)

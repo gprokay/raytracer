@@ -1,10 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
 
 namespace GfxRenderer.Lib
 {
+    public static class FloatExtensions
+    {
+        public static bool Equals(float a, float b, float e = .05f)
+        {
+            return a >= b - e && a <= b + e;
+        }
+    }
 
     public class RasterizationScene
     {
@@ -19,12 +27,10 @@ namespace GfxRenderer.Lib
             AmbientBrightness = ambientBrightness;
         }
 
-        public void Render(ICamera camera, int width, int height, int[] frameBuffer, ZBufferItem[] zBuffer)
+        public void Render(IRayFactory rayFactory, int width, int height, int[] frameBuffer, ZBufferItem[] zBuffer)
         {
-            var rayFactory = camera.GetRayFactory(width, height);
-            
             ClearZBuffer(zBuffer);
-            ProjectToZBuffer(camera, zBuffer, rayFactory);
+            ProjectToZBuffer(zBuffer, rayFactory);
             WriteToFrameBuffer(frameBuffer, zBuffer);
         }
 
@@ -40,12 +46,39 @@ namespace GfxRenderer.Lib
                 else
                 {
                     var hitObject = bufferItem.Object;
-                    var hitPoint = bufferItem.GetIntersection();
+                    var hitPoint = bufferItem.Intersection;
                     var light = GetLight(hitObject, hitPoint);
 
+                    var color = hitObject.Material.Color;
+
+                    //if (FloatExtensions.Equals(bufferItem.u, bufferItem.v))
+                    //{
+                    //    color = Color.Black;
+                    //} 
+                    //else if(FloatExtensions.Equals(bufferItem.u, 0))
+                    //{
+                    //    color = Color.Red;
+                    //}
+                    //else if (FloatExtensions.Equals(bufferItem.u, .9f))
+                    //{
+                    //    color = Color.DarkRed;
+                    //}
+                    //else if (FloatExtensions.Equals(bufferItem.v, 0))
+                    //{
+                    //    color = Color.Yellow;
+                    //}
+                    //else if (FloatExtensions.Equals(bufferItem.v, .9f))
+                    //{
+                    //    color = Color.DarkOrange;
+                    //}
+                    //else
+                    //{
+                    //    color = Color.White;
+                    //}
+                    
                     frameBuffer[i] = hitObject.Material.SurfaceShader
                         .Shade(
-                            bufferItem.Object.Material.Color,
+                            color,
                             Math.Max(light.Brightness, AmbientBrightness)
                         ).ToArgb();
                 }
@@ -72,7 +105,7 @@ namespace GfxRenderer.Lib
             return light;
         }
 
-        private void ProjectToZBuffer(ICamera camera, ZBufferItem[] zBuffer, IRayFactory rayFactory)
+        private void ProjectToZBuffer(ZBufferItem[] zBuffer, IRayFactory rayFactory)
         {
             foreach (var o in Objects)
             {
@@ -84,7 +117,7 @@ namespace GfxRenderer.Lib
                     var v3 = o.Mesh.Vertices[t.V3];
                     var n = o.Mesh.Normals[i];
 
-                    camera.ProjectToZBuffer(v1, v2, v3, n, zBuffer, o, i, rayFactory);
+                    rayFactory.ProjectToZBuffer(v1, v2, v3, n, zBuffer, o);
                 }
             }
         }
@@ -93,7 +126,7 @@ namespace GfxRenderer.Lib
         {
             for (int z = 0; z < zBuffer.Length; ++z)
             {
-                zBuffer[z] = new ZBufferItem { Distance = float.PositiveInfinity, Object = null, TriangleIndex = -1 };
+                zBuffer[z] = new ZBufferItem { Intersection = new Intersection { Distance = float.PositiveInfinity }, Object = null };
             }
         }
     }

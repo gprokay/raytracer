@@ -10,7 +10,15 @@ using Triangle = GfxRenderer.Lib.Triangle;
 
 namespace GfxRenderer.Test
 {
-    public class RasterizationTestScene
+    public interface ITestScene
+    {
+        void Animate();
+
+        string RenderScene(int[] colors, int width, int height, bool parallel = true, CancellationToken? cancellationToken = null);
+    }
+
+
+    public class RasterizationTestScene : ITestScene
     {
         public MeshObject Sphere { get; private set; }
         public ICamera Camera { get; private set; }
@@ -19,18 +27,19 @@ namespace GfxRenderer.Test
         public MeshObject Cube { get; private set; }
         public Vector3 SphereCenter { get; set; }
         private ZBufferItem[] ZBuffer { get; set; }
+        private IRayFactory rayFactory;
 
         public RasterizationTestScene(int meshcomplexity = 6)
         {
             var meshes = ThreeMFLoader.LoadFromFile(@".\data\test.3mf").ToList();
             var mesh = meshes[0];
-            Cube = new MeshObject(new Mesh(mesh.Vertices, mesh.Triangles.Select(t => new Triangle(t.Vector1, t.Vector2, t.Vector3)).ToArray(), mesh.Normals), new OpaqueMaterial(1.2f, Color.Red, .8f, true));
+            Cube = new MeshObject(new Mesh(mesh.Vertices, mesh.Triangles.Select(t => new Triangle(t.Vector1, t.Vector2, t.Vector3)).ToArray(), mesh.Normals), new OpaqueMaterial(1.2f, Color.Red, .8f, .5f));
             Cube.Mesh.Normalize();
             Cube.Mesh.Rotate(MathF.PI / 4, MathF.PI / 4, 0);
 
             var sphereMesh = ProceduralSphere.GetSphereMesh(1f, meshcomplexity);
             SphereCenter = new Vector3(0, 0, 3.5f);
-            Sphere = new MeshObject(sphereMesh, new OpaqueMaterial(1.2f, Color.Yellow, .8f, true));
+            Sphere = new MeshObject(sphereMesh, new OpaqueMaterial(1.2f, Color.Yellow, .8f, .5f));
             Sphere.Mesh.Move(SphereCenter);
             //Sphere.Mesh.CalculateBounds(1);
 
@@ -47,7 +56,7 @@ namespace GfxRenderer.Test
         {
             var sphereMesh = ProceduralSphere.GetSphereMesh(1f, 6);
             SphereCenter = new Vector3(0, 0, 3.5f);
-            Sphere = new MeshObject(sphereMesh, new OpaqueMaterial(1.2f, Color.Yellow, .8f, true));
+            Sphere = new MeshObject(sphereMesh, new OpaqueMaterial(1.2f, Color.Yellow, .8f, .5f));
             Sphere.Mesh.Move(SphereCenter);
             Scene.Objects[1] = Sphere;
         }
@@ -58,8 +67,12 @@ namespace GfxRenderer.Test
             {
                 ZBuffer = new ZBufferItem[width * height];
             }
+            if (rayFactory == null)
+            {
+                rayFactory = Camera.GetRayFactory(width, height);
+            }
             var watch = Stopwatch.StartNew();
-            Scene.Render(Camera, width, height, colors, ZBuffer);
+            Scene.Render(rayFactory, width, height, colors, ZBuffer);
             watch.Stop();
             var tCount = Sphere.Mesh.Triangles.Length + Cube.Mesh.Triangles.Length;
             var t = (int)(tCount / (float)watch.ElapsedMilliseconds);
@@ -67,6 +80,14 @@ namespace GfxRenderer.Test
             var debug = "Rendered in " + watch.ElapsedMilliseconds + " ms Polycount: " + tCount + "; Speed: " + t + " t/ms; FPS: " + fps;
             Debug.WriteLine(debug);
             return debug;
+        }
+
+        public void Animate()
+        {
+            Sphere.Mesh.Move(-1 * SphereCenter);
+            SphereCenter = MeshObject.RotateVector(SphereCenter, 0, -1 * MathF.PI / 32, 0);
+            Sphere.Mesh.Move(SphereCenter);
+            Cube.Mesh.Rotate(-1 * MathF.PI / 128, -1 * MathF.PI / 128, 0);
         }
     }
 }

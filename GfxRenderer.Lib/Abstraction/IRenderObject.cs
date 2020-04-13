@@ -3,8 +3,8 @@
 
     public interface IRenderObject
     {
-        bool TryGetIntersection(Ray ray, out Intersection intersection);
-
         IMaterial Material { get; }
+
+        bool TryGetIntersection(Ray ray, out Intersection intersection);
     }
 }

@@ -35,9 +35,9 @@ namespace GfxRenderer.Lib
             Bits[index] = col;
         }
 
-        public void SetPixel(int index, Color colour)
+        public void SetPixel(int index, Color color)
         {
-            int col = colour.ToArgb();
+            int col = color.ToArgb();
             Bits[index] = col;
         }
 

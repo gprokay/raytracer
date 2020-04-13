@@ -14,7 +14,10 @@ namespace GfxRenderer.WinForms
     {
         private delegate void FromAccessDelegate();
 
-        private RasterizationTestScene scene = new RasterizationTestScene(6);
+        private ITestScene rayTracerScene = new RayTracerTestScene();
+        private ITestScene rasterizationScene = new RasterizationTestScene(meshcomplexity: 4);
+
+        private ITestScene scene;
 
         private readonly CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
         private readonly bool saveFiles;
@@ -24,9 +27,9 @@ namespace GfxRenderer.WinForms
         private DirectBitmap[] bitmaps = new DirectBitmap[2];
         private int currentBitmap = 0;
 
+        private bool changed = false;
         private int width;
         private int height;
-        private BitmapWriter bitmapWriter;
         private FromAccessDelegate refresh;
         private FromAccessDelegate close;
         private string dirName;
@@ -38,10 +41,11 @@ namespace GfxRenderer.WinForms
         public RendererForm(bool saveFiles)
         {
             this.saveFiles = saveFiles;
+            scene = rasterizationScene;
             InitializeComponent();
             RenderFormIcon();
 
-            width = 1600;
+            width = 800;
             height = (int)(width * (9f / 16f));
             Text = "Renderer";
             Width = width + 30;
@@ -65,13 +69,17 @@ namespace GfxRenderer.WinForms
             close = new FromAccessDelegate(Close);
             dirName = Path.Combine(dir, startTime.ToString("O").Replace(':', '-'));
 
-            bitmapWriter = new BitmapWriter();
-
             if (saveFiles)
                 Directory.CreateDirectory(dirName);
 
             Activated += RayTraceForm_Activated;
             FormClosing += RayTraceForm_FormClosing;
+            pictureBox.Click += RendererForm_Click;
+        }
+
+        private void RendererForm_Click(object sender, EventArgs e)
+        {
+            changed = true;
         }
 
         private async void RayTraceForm_Activated(object sender, EventArgs e)
@@ -90,48 +98,56 @@ namespace GfxRenderer.WinForms
 
             task = Task.Factory.StartNew(() =>
             {
-                var colors = new int[width * height];
-                var frameIndex = 0;
-                var token = cancellationTokenSource.Token;
-                while (WindowState != FormWindowState.Minimized && ActiveForm == this && !token.IsCancellationRequested)
-                {
-                    Thread.Sleep(1);
-
-                    currentBitmap = (currentBitmap + 1) % 2;
-                    var msg = scene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
-
-                    if (token.IsCancellationRequested)
-                        break;
-
-                    bitmaps[currentBitmap].SetPixels(colors);
-                    pictureBox.Image = bitmaps[currentBitmap].Bitmap;
-                    
-                    using(var gfx = Graphics.FromImage(bitmaps[currentBitmap].Bitmap))
-                    {
-                        gfx.DrawString(msg, Font, Brushes.Black, 0, 0);
-                    }
-
-                    if (saveFiles)
-                        bitmaps[currentBitmap].Bitmap.Save(Path.Combine(dirName, $"{frameIndex++:0000}.jpg"), ImageFormat.Jpeg);
-
-                    if (token.IsCancellationRequested)
-                        break;
-
-                    Invoke(refresh);
-                    scene.Sphere.Mesh.Move(-1 * scene.SphereCenter);
-                    scene.SphereCenter = MeshObject.RotateVector(scene.SphereCenter, 0, -1 * MathF.PI / 32, 0);
-                    scene.Sphere.Mesh.Move(scene.SphereCenter);
-                    scene.Cube.Mesh.Rotate(-1 * MathF.PI / 128, -1 * MathF.PI / 128, 0);
-                }
-
-                Interlocked.Decrement(ref threadCount);
-
-                if (token.IsCancellationRequested)
-                    Invoke(close);
+                RenderScene(bitmaps, scene);
             });
 
             await task;
             task = null;
+        }
+
+        private void RenderScene(DirectBitmap[] bitmaps, ITestScene scene)
+        {
+            var colors = new int[width * height];
+            var frameIndex = 0;
+            var token = cancellationTokenSource.Token;
+            while (WindowState != FormWindowState.Minimized && ActiveForm == this && !token.IsCancellationRequested)
+            {
+                currentBitmap = (currentBitmap + 1) % 2;
+                var msg = scene.RenderScene(colors, width, height, true, cancellationTokenSource.Token);
+
+                if (token.IsCancellationRequested)
+                    break;
+
+                bitmaps[currentBitmap].SetPixels(colors);
+                pictureBox.Image = bitmaps[currentBitmap].Bitmap;
+
+                using (var gfx = Graphics.FromImage(bitmaps[currentBitmap].Bitmap))
+                {
+                    gfx.DrawString(Thread.CurrentThread.ManagedThreadId + ": " + msg, Font, Brushes.Black, 0, 0);
+                }
+
+                if (saveFiles)
+                    bitmaps[currentBitmap].Bitmap.Save(Path.Combine(dirName, $"{frameIndex++:0000}.jpg"), ImageFormat.Jpeg);
+
+                if (token.IsCancellationRequested)
+                    break;
+
+                Invoke(refresh);
+                rayTracerScene.Animate();
+                rasterizationScene.Animate();
+                if (changed)
+                {
+                    changed = false;
+                    scene = scene is RayTracerTestScene
+                        ? rasterizationScene
+                        : rayTracerScene;
+                }
+            }
+
+            Interlocked.Decrement(ref threadCount);
+
+            if (token.IsCancellationRequested)
+                Invoke(close);
         }
 
         private void RayTraceForm_FormClosing(object sender, FormClosingEventArgs e)

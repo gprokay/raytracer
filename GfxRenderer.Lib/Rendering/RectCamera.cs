@@ -49,7 +49,8 @@ namespace GfxRenderer.Lib
             public Ray GetCameraRay(int x, int y)
             {
                 var current = topLeft + x * horizontalUnitVector + y * verticalUnitVector;
-                return new Ray(rayStartPoint, current - rayStartPoint);
+                var ray = new Ray(rayStartPoint, current - rayStartPoint);
+                return ray;
             }
 
             public Point GetPlaneIntersectionPoint(Vector3 v)
@@ -91,6 +92,60 @@ namespace GfxRenderer.Lib
 
                 return point;
             }
+
+            private static float EdgeFunc(Vector2 a, Vector2 b, Vector2 c)
+            {
+                return (c.X - a.X) * (b.Y - a.Y) - (c.Y - a.Y) * (b.X - a.Y);
+            }
+
+            public void ProjectToZBuffer(Vector3 v1, Vector3 v2, Vector3 v3, Vector3 n, ZBufferItem[] zbuffer, MeshObject obj)
+            {
+                var p1 = GetPlaneIntersectionPoint(v1);
+                var p2 = GetPlaneIntersectionPoint(v2);
+                var p3 = GetPlaneIntersectionPoint(v3);
+
+                //if (p1.X == 0 && p2.X == 0 && p3.X == 0
+                //    || p1.Y == 0 && p2.Y == 0 && p3.Y == 0
+                //    || p1.X == rayFactory.Width - 1 && p2.X == rayFactory.Width - 1 && p3.X == rayFactory.Width - 1
+                //    || p1.Y == rayFactory.Height - 1 && p2.Y == rayFactory.Height - 1 && p3.Y == rayFactory.Height - 1)
+                //{
+                //    return;
+                //}
+
+                var minX = Math.Min(Math.Min(p1.X, p2.X), p3.X);
+                var maxX = Math.Max(Math.Max(p1.X, p2.X), p3.X);
+
+                var minY = Math.Min(Math.Min(p1.Y, p2.Y), p3.Y);
+                var maxY = Math.Max(Math.Max(p1.Y, p2.Y), p3.Y);
+
+                for (var x = minX; x <= maxX; ++x)
+                {
+                    for (var y = minY; y <= maxY; ++y)
+                    {
+                        var ray = GetCameraRay(x, y);
+                        var isSurface = ray.IsSurfaceHit(n);
+                        if (!isSurface)
+                        {
+                            return;
+                        }
+
+                        if (ray.TryIntersectTriangle(v1, v2, v3, out var u, out var v, out _))
+                        {
+                            var d = Vector3.Dot(v1 - ray.StartPoint, n) / Vector3.Dot(n, ray.Direction);
+                            var i = y * pixelWidth + x;
+                            if (zbuffer[i].Intersection.Distance > d)
+                            {
+                                zbuffer[i].Intersection.Distance = d;
+                                zbuffer[i].Object = obj;
+                                zbuffer[i].Intersection.NormalVector = n;
+                                zbuffer[i].u = u;
+                                zbuffer[i].v = v;
+                                zbuffer[i].Intersection.IntersectionPoint = d * ray.Direction + ray.StartPoint;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private readonly Vector3 xVector;
@@ -100,7 +155,7 @@ namespace GfxRenderer.Lib
 
         private readonly Vector3 planeXVector;
         private readonly Vector3 planeYVector;
-        private readonly Rectangle3D rectangle3D;
+        private readonly Plane3D rectangle3D;
 
         public RectCamera(Vector3 o, Vector3 xVector, Vector3 yVector, float length)
         {
@@ -112,60 +167,12 @@ namespace GfxRenderer.Lib
             focalPoint = planeCenter + normal * length;
             planeXVector = Vector3.Normalize(xVector);
             planeYVector = Vector3.Normalize(yVector);
-            rectangle3D = new Rectangle3D(o, xVector, yVector);
+            rectangle3D = new Plane3D(o, xVector, yVector);
         }
 
         public IRayFactory GetRayFactory(int pixelWidth, int pixelHeight)
         {
             return new RayFactory(this, pixelWidth, pixelHeight);
-        }
-
-        public void ProjectToZBuffer(Vector3 v1, Vector3 v2, Vector3 v3, Vector3 n, ZBufferItem[] zbuffer, MeshObject obj, int triangleIndex, IRayFactory rayFactory)
-        {
-            var p1 = rayFactory.GetPlaneIntersectionPoint(v1);
-            var p2 = rayFactory.GetPlaneIntersectionPoint(v2);
-            var p3 = rayFactory.GetPlaneIntersectionPoint(v3);
-
-            //if (p1.X == 0 && p2.X == 0 && p3.X == 0
-            //    || p1.Y == 0 && p2.Y == 0 && p3.Y == 0
-            //    || p1.X == rayFactory.Width - 1 && p2.X == rayFactory.Width - 1 && p3.X == rayFactory.Width - 1
-            //    || p1.Y == rayFactory.Height - 1 && p2.Y == rayFactory.Height - 1 && p3.Y == rayFactory.Height - 1)
-            //{
-            //    return;
-            //}
-
-            var minX = Math.Min(Math.Min(p1.X, p2.X), p3.X);
-            var maxX = Math.Max(Math.Max(p1.X, p2.X), p3.X);
-
-            var minY = Math.Min(Math.Min(p1.Y, p2.Y), p3.Y);
-            var maxY = Math.Max(Math.Max(p1.Y, p2.Y), p3.Y);
-
-            for (var x = minX; x <= maxX; ++x)
-            {
-                for (var y = minY; y <= maxY; ++y)
-                {
-                    var ray = rayFactory.GetCameraRay(x, y);
-                    var isSurface = ray.IsSurfaceHit(n);
-                    if (!isSurface)
-                    {
-                        return;
-                    }
-
-                    if (ray.TryIntersectTriangle(v1, v2, v3, out _, out _, out _))
-                    {
-                        var d = Vector3.Dot(v1 - ray.StartPoint, n) / Vector3.Dot(n, ray.Direction);
-                        var i = y * rayFactory.Width + x;
-                        if (zbuffer[i].Distance > d)
-                        {
-                            zbuffer[i].Distance = d;
-                            zbuffer[i].Object = obj;
-                            zbuffer[i].TriangleIndex = triangleIndex;
-                            zbuffer[i].Normal = n;
-                            zbuffer[i].Intersection = d * ray.Direction + ray.StartPoint;
-                        }
-                    }
-                }
-            }
         }
     }
 }

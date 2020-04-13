@@ -6,7 +6,7 @@ namespace GfxRenderer.Lib
 {
     public class BitmapWriter
     {
-        public Bitmap WriteToBitmap(Bitmap bitmap, Color[] result, int width, int height)
+        public static Bitmap WriteToBitmap(Bitmap bitmap, Color[] result, int width, int height)
         {
             if (bitmap == null || bitmap.Width != width && bitmap.Height != height)
             {
